@@ -37,7 +37,7 @@ def input_pdf_text(uploaded_file):
         st.error(f"❌ Error reading PDF: {str(e)}")
         return None
 
-# Prompt Template
+# Strict JSON Prompt Template (Fixed)
 input_prompt = """
 Act as an ATS (Application Tracking System) specializing in technical roles (Software Engineering, Data Science, Data Analysis, Big Data Engineering).
 Analyze the following:
@@ -45,7 +45,12 @@ Analyze the following:
 Resume: {text}
 Job Description: {jd}
 
-Provide your response in JSON format:
+**STRICT INSTRUCTIONS:**  
+- Respond **only** in valid JSON format (no extra text).  
+- Ensure the response starts with `{{` and ends with `}}`.  
+- If no data, return an empty list `[]` or `"N/A"`.  
+
+Return the response in **this exact JSON structure**:
 {{
   "JD Match": "X%",
   "MissingKeywords": ["keyword1", "keyword2", ...],
@@ -56,7 +61,7 @@ Provide your response in JSON format:
 
 # Streamlit UI
 st.set_page_config(page_title="ResumeXpert", page_icon="📄", layout="wide")
-st.title("📄 ResumeXpert - ATS Resume Analyzer")
+st.title("📄 ResumeXpert")
 st.markdown("""
 **Optimize Your Resume for ATS Compliance**
 
@@ -92,7 +97,7 @@ if submit:
             st.error("❌ Could not extract text from the PDF. Please upload a valid resume.")
             st.stop()
         
-        formatted_prompt = input_prompt.format(text=text, jd=jd)
+        formatted_prompt = input_prompt.format(text=text, jd=jd)  # Fixes KeyError issue
         response = get_groq_response(formatted_prompt)
         
         if response is None:
@@ -100,6 +105,7 @@ if submit:
             st.stop()
         
         try:
+            # Parse JSON response
             result = json.loads(response)
             
             # Display results
@@ -132,10 +138,10 @@ if submit:
                 else:
                     st.info("No specific suggestions available")
             
-            # Raw response (debugging)
+            # Debugging option: Show raw response
             if st.checkbox("🛠 Show Raw Response"):
                 st.code(json.dumps(result, indent=2))
                 
         except json.JSONDecodeError:
-            st.error("❌ The response format was not as expected. Displaying raw response:")
-            st.code(response)
+            st.error("❌ The response format was not as expected. Please try again.")
+            st.code(response)  # Display raw response for debugging
